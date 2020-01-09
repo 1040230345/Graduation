@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js" type="text/javascript"></script>
+    <!-- 最新版本的 Bootstrap 核心 CSS 文件 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- 可选的 Bootstrap 主题文件（一般不用引入） -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+    <!-- 最新的 Bootstrap 核心 JavaScript 文件 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+        var mymsg='';
+        var myhead = true;
+        var socket;
+        if(typeof(WebSocket) == "undefined") {
+            console.log("您的浏览器不支持WebSocket");
+        }else{
+            console.log("您的浏览器支持WebSocket");
+            //实现化WebSocket对象，指定要连接的服务器地址与端口 ，建立连接
+            socket = new WebSocket("ws://localhost:8080/websocket");
+            //打开事件
+            socket.onopen = function() {
+                console.log("Socket 已打开");
+            };
+            //获得消息事件
+            socket.onmessage = function(msg) {
+                if(myhead==true){
+                    $("#xshell").html("jackson@jackson:~$"+"&nbsp;&nbsp;"+"<input type='text' id='message' style='border:none;border-radius:0;box-shadow: 0px 0px 0px 0px;background-color: black;outline:none' />");
+                    $("#message").focus();
+                }else{
+                    //发现消息进入调后台获取
+                    console.log("后台获取信息："+msg.data);
+                    msg.data.substring(msg.data.length-2)=='$ '?mymsg=mymsg+msg.data:mymsg=mymsg+msg.data+"<br>";
+                    $("#xshell").html(mymsg+"<input type='text' id='message' style='border:none;border-radius:0;box-shadow: 0px 0px 0px 0px;background-color: black;outline:none' />");
+                    $("#message").focus();
+                    //判断xshell盒子高度大于box盒子高度时，xshell向上位移两个盒子的高度差
+                    if ( $("#xshell").height()>$("#box").height()) {
+                        $("#xshell").css('top',-($("#xshell").height()-$("#box").height())+'px');
+                    }
+                }
+
+            };
+            //关闭事件
+            socket.onclose = function() {
+                console.log("Socket已关闭");
+            };
+            //发生了错误事件
+            socket.onerror = function() {
+                alert("Socket发生了错误");
+            }
+            $(window).unload(function(){
+                socket.close();
+            });
+        }
+        /**
+         * 键盘事件
+         */
+        $(function(){
+            $(document).on("keypress","#message",function(event) {
+                myhead = false;
+                //回车
+                if (event.keyCode == "13") {
+                    if ($("#message").val() == 'clear') {
+                        socket.send($("#message").val());
+                        $("#xshell").text('');
+                        mymsg = '';
+                    } else {
+                        mymsg=mymsg.substring(-1,mymsg.length-19);
+                        socket.send($("#message").val());
+                    }
+                    $("#message").val("");
+                }
+
+            });
+            // //ctrl+c
+            // $(document).keydown(function(event) {
+            //     if(event.keyCode=="27"){
+            //         console.log("进来了吗")
+            //         mymsg=mymsg.substring(-1,mymsg.length-19);
+            //         socket.send("0x1B");
+            //         $("#message").val("");
+            //     }
+                // if (event.ctrlKey && event.keyCode === 67){
+                //     socket.send("quit;exit;");
+                // }
+        //     });
+         });
+    </script>
+    <script>
+        /**
+         * 鼠标长按监听
+         */
+        var timeout = undefined;
+        var startTime = 0;
+        var endTime = 0;
+        // web端适用
+        $(document).delegate("#box", 'mousedown', function (event) {
+            startTime = new Date().getTime();
+            timeout = setTimeout(function() { // 长按
+                $("#message").blur();
+            }, 400);
+        });
+        $(document).delegate("#box", 'mouseup', function (event) {
+            endTime = new Date().getTime();
+            clearTimeout(timeout);
+            if ((endTime - startTime) < 400) { // 单击
+                if (1 == event.which) {
+                    $("#message").focus();
+                }
+
+            }
+        });
+    </script>
+    <script>
+        $(document).ready(function () {
+            //给box添加滚轮事件
+            document.getElementById("box").onmousewheel=function (e) {
+                //获取xshell盒子的上下位移量
+                var scollval=$("#xshell").position().top;
+                if (e.wheelDelta>0) {
+                    //往上滚
+                    //判断xshell是不是在顶端，是的话不滚动，不是的话再滚动
+                    if(scollval!=0&&scollval<0){
+                    scollval=scollval+e.wheelDelta/5;
+                    $("#xshell").css('top',scollval+'px');}
+                }else{
+                    //往下滚
+                    //判断xshell盒子高度大于box盒子高度时，可往下滚动
+                    if ( $("#xshell").height()>$("#box").height()) {
+                        scollval=scollval+e.wheelDelta/5;
+                        $("#xshell").css('top',scollval+'px');
+                    }
+                };
+            }
+        });
+
+    </script>
+</head>
+<body>
+<div id="box" class="box" style="width: 600px;height: 600px;background-color: black;overflow: hidden;position: relative;">
+<div id="xshell" style="color: white; width: 600px;height: auto;position: absolute;top: 0;left: 0;">
+</div></div>
+<!--<div id="content"></div>-->
+<!--请输入命令(按回车结束):<input type="text" id="message">-->
+</body>
+</html>
